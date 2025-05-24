@@ -27,9 +27,10 @@ class voicevox:
     _synthesizer = None
     _initialized = False
 
-    def __init__(self, text: str, style_id: int = 0, speed: float = 1.0):
+    def __init__(self, text: str, style_id: int, pitch: int, speed: float):
         self.text = text
         self.style_id = style_id
+        self.pitch = (pitch - 100) * 0.001
         self.speed = speed
         self.voicevox_config = VoicevoxConfig.get_default_config()
         self.config = Config.load_config()
@@ -83,6 +84,7 @@ class voicevox:
                     raise RuntimeError('シンセサイザーが初期化されていません')
 
                 audio_query = await voicevox._synthesizer.create_audio_query(self.text, self.style_id)
+                audio_query.pitch_scale = self.pitch
                 audio_query.speed_scale = self.speed
                 wav = await voicevox._synthesizer.synthesis(audio_query, self.style_id)
 
@@ -108,6 +110,7 @@ class voicevox:
             json_data = await json_response.json()
             if json_response.status != 200:
                 raise Exception(f"audio_queryのリクエストに失敗しました: {json_data['detail'][0]['msg']}")
+            json_data['pitchScale'] = self.pitch
             json_data['speedScale'] = self.speed
             del self.params['text']
             response = await session.post(

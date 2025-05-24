@@ -128,6 +128,7 @@ def setup_commands(tree: app_commands.CommandTree):
     @app_commands.describe(
         engine='音声エンジンの選択',
         voice='声の指定',
+        pitch='声の高さ（デフォルトは100）',
         speed='読み上げ速度（AquesTalk: 50-200, VOICEVOX/AivisSpeech: 0.5-5）'
     )
     @app_commands.choices(
@@ -138,7 +139,7 @@ def setup_commands(tree: app_commands.CommandTree):
             app_commands.Choice(name='AivisSpeech', value='aivisspeech')
         ]
     )
-    async def setvoice(interaction: discord.Interaction, engine: str, voice: str, speed: float = 1.0):
+    async def setvoice(interaction: discord.Interaction, engine: str, voice: str, pitch: int = 100, speed: float = 1.0):
         await ensure_db_connection()
 
         if engine.startswith('aquestalk'):
@@ -177,8 +178,8 @@ def setup_commands(tree: app_commands.CommandTree):
                     return
 
         try:
-            await db.set_voice_settings(interaction.guild_id, interaction.user.id, voice, speed, engine)
-            update_voice_settings(interaction.guild_id, interaction.user.id, voice, speed, engine)
+            await db.set_voice_settings(interaction.guild_id, interaction.user.id, voice, pitch, speed, engine)
+            update_voice_settings(interaction.guild_id, interaction.user.id, voice, pitch, speed, engine)
 
             voice_name = get_voice_name(engine, voice, voice_characters)
 
@@ -186,6 +187,7 @@ def setup_commands(tree: app_commands.CommandTree):
                 f"ボイス設定を更新しました。\n"
                 f"エンジン: {engine}\n"
                 f"キャラクター: {voice_name}\n"
+                f"声の高さ: {pitch}\n"
                 f"速度: {speed}\n"
             )
             if engine == 'voicevox':

@@ -3,7 +3,7 @@ import os
 import platform
 
 class aquestalk1:
-    def __init__(self, text: str, speed: int, voice_name: str):
+    def __init__(self, text: str, voice_name: str, speed: int):
         self.text = text
         self.speed = speed
 
@@ -31,7 +31,7 @@ class aquestalk1:
         self.aquestalk.AquesTalk_FreeWave(self.wav_data)
 
 class aquestalk2:
-    def __init__(self, text: str, speed: int, voice_name: str):
+    def __init__(self, text: str, voice_name: str, speed: int):
         self.text = text
         self.speed = speed
 

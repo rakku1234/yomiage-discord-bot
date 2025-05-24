@@ -21,7 +21,7 @@ reading_tasks = {}
 config = Config.load_config()
 debug = config['debug']
 
-async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str, voice_name: str, speed: int, engine: str):
+async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str, voice_name: str, pitch: int, speed: int, engine: str):
     if not voice_client.is_connected():
         return
 
@@ -34,19 +34,19 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
             case 'voicevox':
                 if not config['engine_enabled']['voicevox']:
                     return
-                audio = voicevox(message, int(voice_name), float(speed))
+                audio = voicevox(message, int(voice_name), pitch, speed)
             case 'aivisspeech':
                 if not config['engine_enabled']['aivisspeech']:
                     return
-                audio = aivisspeech(message, int(voice_name), float(speed))
+                audio = aivisspeech(message, int(voice_name), pitch, speed)
             case 'aquestalk1':
                 if not config['engine_enabled']['aquestalk1']:
                     return
-                audio = aquestalk1(message, speed, voice_name)
+                audio = aquestalk1(message, voice_name, int(speed))
             case 'aquestalk2':
                 if not config['engine_enabled']['aquestalk2']:
                     return
-                audio = aquestalk2(message, speed, voice_name)
+                audio = aquestalk2(message, voice_name, int(speed))
             case _:
                 raise ValueError(f"無効なエンジン: {engine}")
 
@@ -54,6 +54,9 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
         async with aiofiles.tempfile.NamedTemporaryFile(suffix='.wav', prefix='yomiage_', delete=False) as temp:
             await temp.write(audio_data)
             audio_file = temp.name
+
+        if engine.startswith('aquestalk'):
+            audio_file = await pitch_convert(audio_file, pitch)
 
         if debug:
             end_time = time.time()
@@ -83,9 +86,9 @@ async def process_message_queue(guild_id: int):
             if message_data is None:
                 break
 
-            text, voice_name, speed, voice_client, engine = message_data
+            text, voice_name, pitch, speed, voice_client, engine = message_data
 
-            await speak_in_voice_channel(voice_client, text, voice_name, speed, engine)
+            await speak_in_voice_channel(voice_client, text, voice_name, pitch, speed, engine)
             if debug:
                 logger.debug('音声再生が完了しました')
 
@@ -125,11 +128,12 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
             current_voice_settings[(guild.id, author.id)] = voice_settings
 
     voice_name = '2'
+    pitch = 100
     speed = 1.0
     engine = 'voicevox'
 
     if voice_settings:
-        voice_name, speed, engine = voice_settings
+        voice_name, pitch, speed, engine = voice_settings
 
     for match in re.finditer(r'<@!?(\d+)>', text):
         user_id = int(match.group(1))
@@ -157,13 +161,13 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
     if engine.startswith('aquestalk'):
         text = text_to_speech(text).convert()
 
-    await message_queues[guild.id].put((text, voice_name, speed, voice_client, engine))
+    await message_queues[guild.id].put((text, voice_name, pitch, speed, voice_client, engine))
 
     if guild.id not in reading_tasks or reading_tasks[guild.id].done():
         reading_tasks[guild.id] = asyncio.create_task(process_message_queue(guild.id))
 
-def update_voice_settings(guild_id: int, user_id: int, voice_name: str, speed: int, engine: str):
-    current_voice_settings[(guild_id, user_id)] = (voice_name, speed, engine)
+def update_voice_settings(guild_id: int, user_id: int, voice_name: str, pitch: int, speed: int, engine: str):
+    current_voice_settings[(guild_id, user_id)] = (voice_name, pitch, speed, engine)
 
 async def cleanup_temp_files():
     while True:
@@ -175,3 +179,16 @@ async def cleanup_temp_files():
             except Exception as e:
                 logger.error(f"一時ファイルの削除に失敗しました: {e}")
         await asyncio.sleep(300)
+
+async def pitch_convert(file_path: str, pitch: int) -> str:
+    temp_file = file_path.replace('.wav', '_temp.wav')
+    process = await asyncio.create_subprocess_exec(
+        'ffmpeg', '-i', file_path,
+        '-af', f'asetrate=8000*{pitch}/100,atempo=100/{pitch}',
+        '-ar', '8000', '-ac', '1', '-f', 'wav', temp_file,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL
+    )
+    await process.wait()
+    os.replace(temp_file, file_path)
+    return file_path

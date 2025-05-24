@@ -55,6 +55,7 @@ class Database:
                     server_id INTEGER,
                     user_id INTEGER,
                     voice_name TEXT NOT NULL,
+                    pitch INTEGER NOT NULL,
                     speed INTEGER NOT NULL,
                     engine TEXT NOT NULL,
                     PRIMARY KEY (server_id, user_id)
@@ -138,6 +139,7 @@ class Database:
                             server_id BIGINT,
                             user_id BIGINT,
                             voice_name VARCHAR(255) NOT NULL,
+                            pitch INTEGER NOT NULL,
                             speed DOUBLE NOT NULL,
                             engine VARCHAR(50) NOT NULL,
                             PRIMARY KEY (server_id, user_id)
@@ -326,32 +328,33 @@ class Database:
                     await cursor.execute("DELETE FROM autojoin WHERE server_id = %s", (server_id,))
                     await conn.commit()
 
-    async def set_voice_settings(self, server_id: int, user_id: int, voice_name: str, speed: int, engine: str) -> None:
+    async def set_voice_settings(self, server_id: int, user_id: int, voice_name: str, pitch: int, speed: int, engine: str) -> None:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""
-                    INSERT OR REPLACE INTO voice_settings (server_id, user_id, voice_name, speed, engine)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (server_id, user_id, voice_name, speed, engine))
+                    INSERT OR REPLACE INTO voice_settings (server_id, user_id, voice_name, pitch, speed, engine)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (server_id, user_id, voice_name, pitch, speed, engine))
                 await self.connection.commit()
         elif self.config['database']['connection'] in ['mysql', 'mariadb']:
             async with self.pool.acquire() as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute("""
-                        INSERT INTO voice_settings (server_id, user_id, voice_name, speed, engine)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO voice_settings (server_id, user_id, voice_name, pitch, speed, engine)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                         ON DUPLICATE KEY UPDATE 
                         voice_name = %s,
+                        pitch = %s,
                         speed = %s,
                         engine = %s
-                    """, (server_id, user_id, voice_name, speed, engine, voice_name, speed, engine))
+                    """, (server_id, user_id, voice_name, pitch, speed, engine, voice_name, pitch, speed, engine))
                     await conn.commit()
 
-    async def get_voice_settings(self, server_id: int, user_id: int) -> Optional[Tuple[str, int, str]]:
+    async def get_voice_settings(self, server_id: int, user_id: int) -> Optional[Tuple[str, int, int, str]]:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""
-                    SELECT voice_name, speed, engine 
+                    SELECT voice_name, pitch, speed, engine 
                     FROM voice_settings 
                     WHERE server_id = ? AND user_id = ?
                 """, (server_id, user_id))
@@ -364,7 +367,7 @@ class Database:
             async with self.pool.acquire() as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute("""
-                        SELECT voice_name, speed, engine 
+                        SELECT voice_name, pitch, speed, engine 
                         FROM voice_settings 
                         WHERE server_id = %s AND user_id = %s
                     """, (server_id, user_id))
