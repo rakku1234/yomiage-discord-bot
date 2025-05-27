@@ -172,7 +172,7 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
 def update_voice_settings(guild_id: int, user_id: int, voice_name: str, pitch: int, speed: int, engine: str):
     current_voice_settings[(guild_id, user_id)] = (voice_name, pitch, speed, engine)
 
-async def cleanup_temp_files() -> None:
+def cleanup_temp_files() -> None:
     while True:
         for file in glob.glob(os.path.join(tempfile.gettempdir(), 'yomiage_*.wav')):
             try:
@@ -181,7 +181,7 @@ async def cleanup_temp_files() -> None:
                     logger.debug(f"一時ファイルを削除しました: {file}")
             except Exception as e:
                 logger.error(f"一時ファイルの削除に失敗しました: {e}")
-        await asyncio.sleep(300)
+        time.sleep(300)
 
 async def pitch_convert(file_path: str, pitch: int) -> str:
     temp_file = file_path.replace('.wav', '_temp.wav')
