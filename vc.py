@@ -89,9 +89,9 @@ async def process_message_queue(guild_id: int):
             if message_data is None:
                 break
 
-            text, voice_name, pitch, speed, voice_client, engine = message_data
+            message, voice_name, pitch, speed, voice_client, engine = message_data
 
-            await speak_in_voice_channel(voice_client, text, voice_name, pitch, speed, engine)
+            await speak_in_voice_channel(voice_client, message, voice_name, pitch, speed, engine)
             if debug:
                 logger.debug('音声再生が完了しました')
 
@@ -101,9 +101,7 @@ async def process_message_queue(guild_id: int):
             continue
 
 async def read_message(message: str | discord.Message, guild: discord.Guild = None, author: discord.Member = None, channel: discord.TextChannel = None) -> None:
-    if isinstance(message, str):
-        text = message
-    else:
+    if not isinstance(message, str):
         if message.author.bot:
             return
 
@@ -114,7 +112,7 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
         guild = message.guild
         author = message.author
         channel = message.channel
-        text = message.content.replace('\n', ' ')
+        message = message.content.replace('\n', ' ')
 
     voice_client = guild.voice_client
     if voice_client is None or not voice_client.is_connected():
@@ -122,7 +120,7 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
 
     dictionary_replacements = await db.get_dictionary_replacements(guild.id)
     for original, replacement in dictionary_replacements.items():
-        text = text.replace(original, replacement)
+        message = message.replace(original, replacement)
 
     voice_settings = current_voice_settings.get((guild.id, author.id))
     if voice_settings is None and author:
@@ -138,33 +136,33 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
     if voice_settings:
         voice_name, pitch, speed, engine = voice_settings
 
-    for match in re.finditer(r'<@!?(\d+)>', text):
+    for match in re.finditer(r'<@!?(\d+)>', message):
         user_id = int(match.group(1))
         user = guild.get_member(user_id)
         if user:
-            text = text.replace(match.group(0), user.display_name)
+            message = message.replace(match.group(0), user.display_name)
     
-    for channel_id_str in re.findall(r'<#(\d+)>', text):
+    for channel_id_str in re.findall(r'<#(\d+)>', message):
         channel_id = int(channel_id_str)
         channel = guild.get_channel(channel_id)
         if channel:
             cleaned_channel_name = re.sub(r'[\U0001F300-\U0001F64F\U0001F680-\U0001F6FF\u2600-\u26FF\u2700-\u27BF]', '', channel.name)
-            text = text.replace(f'<#{channel_id_str}>', cleaned_channel_name)
+            message = message.replace(f'<#{channel_id_str}>', cleaned_channel_name)
 
-    text = re.sub(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:\/[^\s]*)?', 'URL省略', text)
+    message = re.sub(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:\/[^\s]*)?', 'URL省略', message)
 
-    text = re.sub(r'<:[a-zA-Z0-9_]+:[0-9]+>', '', text)
+    message = re.sub(r'<:[a-zA-Z0-9_]+:[0-9]+>', '', message)
 
-    if len(text) == 0:
+    if len(message) == 0:
         return
 
-    if len(text) >= config['discord']['max_length']:
-        text = text[:config['discord']['max_length']] + '。以下省略'
+    if len(message) >= config['discord']['max_length']:
+        message = message[:config['discord']['max_length']] + '。以下省略'
 
     if engine.startswith('aquestalk'):
-        text = text_to_speech().convert(text)
+        message = text_to_speech().convert(message)
 
-    await message_queues[guild.id].put((text, voice_name, pitch, speed, voice_client, engine))
+    await message_queues[guild.id].put((message, voice_name, pitch, speed, voice_client, engine))
 
     if guild.id not in reading_tasks or reading_tasks[guild.id].done():
         reading_tasks[guild.id] = asyncio.create_task(process_message_queue(guild.id))

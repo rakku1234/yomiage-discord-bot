@@ -119,7 +119,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         if voice_client and voice_client.is_connected() and voice_client.channel == after.channel:
             await read_message(f"{member.display_name}が参加しました", member.guild, member, after.channel)
             if debug:
-                logger.debug(f"{member.guild.id}に{member.display_name}が参加しました")
+                logger.debug(f"{member.guild.name}に{member.display_name}が参加しました")
 
     if before.channel is not None and after.channel is None:
         voice_client = member.guild.voice_client
@@ -159,7 +159,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 
     await db.remove_read_channel(voice_client.guild.id)
     if debug:
-        logger.debug(f"{voice_client.guild.id}のボイスチャンネルのメンバーはいないため読み上げチャンネルから切断しました")
+        logger.debug(f"{voice_client.guild.name}のボイスチャンネルのメンバーはいないため読み上げチャンネルから切断しました")
 
 @client.event
 async def on_message(message: discord.Message):
@@ -182,7 +182,7 @@ async def connect_to_voice_channel(guild: discord.Guild, voice_channel: discord.
         if chat_channel:
             await chat_channel.send(embed=discord.Embed(color=discord.Color.dark_blue(), description='ユーザーが参加したためボイスチャンネルに接続しました'))
         if debug:
-            logger.debug(f"{guild.id}の自動参加に成功しました")
+            logger.debug(f"{guild.name}の自動参加に成功しました")
     except Exception as e:
         logger.error(f"{guild.name}のサーバーの自動参加に失敗しました: {str(e)}")
 
