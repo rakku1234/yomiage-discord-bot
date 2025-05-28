@@ -7,6 +7,7 @@ from config import Config
 from datetime import datetime, timedelta, timezone
 from discord import app_commands
 from discord_cmd import setup_commands
+from graph import generate_daily_graph
 from loguru import logger
 from vc import read_message, db, cleanup_temp_files
 from voicevox import voicevox
@@ -68,6 +69,7 @@ async def on_ready():
         logger.error(f"voicevoxの初期化に失敗しました: {e}")
 
     threading.Thread(target=cleanup_temp_files, daemon=True).start()
+    asyncio.create_task(generate_daily_graph())
 
 @client.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):

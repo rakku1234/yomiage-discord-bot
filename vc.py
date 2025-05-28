@@ -12,6 +12,7 @@ from aquestalk import aquestalk1, aquestalk2
 from collections import defaultdict
 from config import Config
 from database import Database
+from graph import SynthesisTimeGraph
 from loguru import logger
 from text_to_speech import text_to_speech
 from voicevox import voicevox
@@ -21,6 +22,7 @@ message_queues = defaultdict(asyncio.Queue)
 reading_tasks = {}
 config = Config.load_config()
 debug = config['debug']
+synthesis_graph = SynthesisTimeGraph()
 
 async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str, voice_name: str, pitch: int, speed: int, engine: str):
     if not voice_client.is_connected():
@@ -63,7 +65,9 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
 
         if debug:
             end_time = time.time()
-            logger.debug(f"音声合成完了 - 所要時間: {end_time - start_time}秒 ファイル名: {audio_file}")
+            duration = end_time - start_time
+            logger.debug(f"音声合成完了 - 所要時間: {duration}秒 ファイル名: {audio_file}")
+            await synthesis_graph.add_point(duration)
 
         future = asyncio.Future()
         def after_playing(error):

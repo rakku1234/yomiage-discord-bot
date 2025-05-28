@@ -11,6 +11,7 @@ dependencies = [
     "discord-py[voice]>=2.5.2",
     "kanalizer>=0.1.1",
     "loguru>=0.7.3",
+    "plotly>=6.1.2",
     "pyyaml>=6.0.2",
     "voicevox_core; platform_system == 'Windows' or platform_system == 'Linux'",
 ]

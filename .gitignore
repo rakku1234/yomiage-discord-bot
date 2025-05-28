@@ -2,3 +2,4 @@
 __pycache__
 config.yaml
 bot.db
+synthesis_times.json
