@@ -4,11 +4,10 @@ import platform
 from config import Config
 from loguru import logger
 from pathlib import Path
-from typing import Dict
 from voicevox_core.asyncio import Onnxruntime, OpenJtalk, Synthesizer, VoiceModelFile
 
 class VoicevoxConfig:
-    def get_default_config() -> Dict:
+    def get_default_config() -> dict:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         match platform.system().lower():
             case 'windows':

@@ -1,14 +1,13 @@
 import aiosqlite
 import asyncmy
 from config import Config
-from typing import Dict, Tuple, Optional, List
 
 class Database:
     _instance = None
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(Database, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance.pool = None
             cls._instance.connection = None
             cls._instance.config = Config.load_config()
@@ -199,7 +198,7 @@ class Database:
                     """)
                 await conn.commit()
 
-    async def get_read_channels(self) -> Dict[int, Tuple[int, int]]:
+    async def get_read_channels(self) -> dict[int, tuple[int, int]]:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("SELECT server_id, voice_channel, chat_channel FROM read_channels")
@@ -212,7 +211,7 @@ class Database:
                     rows = await cursor.fetchall()
                     return {row[0]: (row[1], row[2]) for row in rows}
 
-    async def get_read_channel(self, server_id: int) -> Optional[Tuple[int, int]]:
+    async def get_read_channel(self, server_id: int) -> tuple[int, int] | None:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""
@@ -290,7 +289,7 @@ class Database:
                     """, (server_id, voice_channel, text_channel, voice_channel, text_channel))
                     await conn.commit()
 
-    async def get_autojoin(self, server_id: int) -> Optional[Tuple[int, int]]:
+    async def get_autojoin(self, server_id: int) -> tuple[int, int] | None:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""
@@ -350,7 +349,7 @@ class Database:
                     """, (server_id, user_id, voice_name, pitch, speed, engine, voice_name, pitch, speed, engine))
                     await conn.commit()
 
-    async def get_voice_settings(self, server_id: int, user_id: int) -> Optional[Tuple[str, int, int, str]]:
+    async def get_voice_settings(self, server_id: int, user_id: int) -> tuple[str, int, int, str] | None:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""
@@ -395,7 +394,7 @@ class Database:
                     """, (server_id, original_text, replacement_text, replacement_text))
                     await conn.commit()
 
-    async def get_dictionary_replacements(self, server_id: int) -> Dict[str, str]:
+    async def get_dictionary_replacements(self, server_id: int) -> dict[str, str]:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""
@@ -468,7 +467,7 @@ class Database:
                     """, (server_id, user_id))
                     await conn.commit()
 
-    async def get_muted_users(self, server_id: int) -> List[int]:
+    async def get_muted_users(self, server_id: int) -> list[int]:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""
@@ -528,7 +527,7 @@ class Database:
                     """, (server_id, text_channel, text_channel))
                     await conn.commit()
 
-    async def get_dynamic_joins(self, server_id: int) -> List[int]:
+    async def get_dynamic_joins(self, server_id: int) -> list[int]:
         if self.config['database']['connection'] == 'sqlite':
             async with self.connection.cursor() as cursor:
                 await cursor.execute("""

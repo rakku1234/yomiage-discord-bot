@@ -16,11 +16,12 @@ from loguru import logger
 from text_to_speech import text_to_speech
 from voicevox import voicevox
 
+config = Config.load_config()
 current_voice_settings = {}
+db = Database()
+debug = config['debug']
 message_queues = defaultdict(asyncio.Queue)
 reading_tasks = {}
-config = Config.load_config()
-debug = config['debug']
 
 async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str, voice_name: str, pitch: int, speed: int, engine: str):
     if not voice_client.is_connected():
@@ -79,8 +80,6 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
         await future
     except Exception as e:
         logger.error(f"音声合成エラー: {e}\n入力メッセージ: {message}")
-
-db = Database()
 
 async def process_message_queue(guild_id: int):
     while True:

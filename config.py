@@ -1,7 +1,7 @@
 import aiofiles
 import os
 import yaml
-from typing import Dict, Any
+from typing import Any
 
 class Config:
     _config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
@@ -19,7 +19,7 @@ class Config:
         raise error
 
     @classmethod
-    def load_config(cls) -> Dict[str, Any]:
+    def load_config(cls) -> dict[str, Any]:
         try:
             with open(cls._config_path, encoding='utf-8') as f:
                 return yaml.safe_load(f)
@@ -27,7 +27,7 @@ class Config:
             cls._handle_config_errors(e)
 
     @classmethod
-    async def async_load_config(cls) -> Dict[str, Any]:
+    async def async_load_config(cls) -> dict[str, Any]:
         try:
             async with aiofiles.open(cls._config_path, encoding='utf-8') as f:
                 return yaml.safe_load(await f.read())

@@ -4,7 +4,6 @@ from config import Config
 from database import Database
 from discord import app_commands
 from loguru import logger
-from typing import Dict, List, Tuple
 from vc import update_voice_settings, message_queues, reading_tasks
 
 db = Database()
@@ -15,7 +14,7 @@ engine_key = {
     'aivisspeech': 'aivisspeech'
 }
 
-def load_voice_characters() -> List[Dict]:
+def load_voice_characters() -> list[dict]:
     try:
         with open('voice_character.json', encoding='utf-8') as f:
             data = json.load(f)
@@ -198,7 +197,7 @@ def setup_commands(tree: app_commands.CommandTree):
             await interaction.response.send_message(embed=discord.Embed(color=discord.Color.red(), description=f"設定の更新に失敗しました: {str(e)}"))
 
     @setvoice.autocomplete('voice')
-    async def voice_autocomplete(interaction: discord.Interaction, current: str,) -> List[app_commands.Choice[str]]:
+    async def voice_autocomplete(interaction: discord.Interaction, current: str,) -> list[app_commands.Choice[str]]:
         engine = interaction.namespace.engine
         if not engine:
             return []
@@ -389,7 +388,7 @@ def setup_commands(tree: app_commands.CommandTree):
         except Exception as e:
             await interaction.response.send_message(embed=discord.Embed(color=discord.Color.red(), description=f'読み上げるテキストチャンネルの変更に失敗しました: {str(e)}'), ephemeral=True)
 
-def validate_voice_engine(engine: str, voice: str, config: Dict, voice_characters: Dict) -> Tuple[bool, str]:
+def validate_voice_engine(engine: str, voice: str, config: dict, voice_characters: dict) -> tuple[bool, str]:
     if not config['engine_enabled'][engine]:
         return False, f'{engine}は無効になっています。'
     valid_voices = [v['value'] for v in voice_characters[engine_key[engine]]]
@@ -397,7 +396,7 @@ def validate_voice_engine(engine: str, voice: str, config: Dict, voice_character
         return False, f'無効な{engine}の音声が指定されました。'
     return True, ''
 
-def get_voice_name(engine: str, voice: str, voice_characters: Dict) -> str:
+def get_voice_name(engine: str, voice: str, voice_characters: dict) -> str:
     for v in voice_characters[engine_key[engine]]:
         if v['value'] == voice:
             return v['name']
