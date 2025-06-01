@@ -14,15 +14,6 @@ engine_key = {
     'aivisspeech': 'aivisspeech'
 }
 
-def load_voice_characters() -> list[dict]:
-    try:
-        with open('voice_character.json', encoding='utf-8') as f:
-            data = json.load(f)
-            return data
-    except Exception:
-        logger.error('音声キャラクターの設定を読み込めませんでした')
-        return []
-
 async def ensure_db_connection():
     if db.pool is None:
         await db.connect()
@@ -121,7 +112,12 @@ def setup_commands(tree: app_commands.CommandTree):
 
     tree.add_command(autojoin_group)
 
-    voice_characters = load_voice_characters()
+    try:
+        with open('voice_character.json', encoding='utf-8') as f:
+            voice_characters = json.load(f)
+    except Exception as e:
+        logger.error(f"音声キャラクターの設定を読み込めませんでした: {str(e)}")
+        voice_characters = []
 
     @tree.command(name='setvoice', description='ボイスキャラクターと読み上げ速度を設定します')
     @app_commands.describe(
