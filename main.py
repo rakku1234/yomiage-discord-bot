@@ -2,13 +2,12 @@ import asyncio
 import discord
 import platform
 import sys
-import threading
 from config import Config
 from datetime import datetime, timedelta, timezone
 from discord import app_commands
 from discord_cmd import setup_commands
 from loguru import logger
-from vc import read_message, db, cleanup_temp_files
+from vc import read_message, db
 from voicevox import voicevox
 
 intents = discord.Intents.default()
@@ -67,7 +66,6 @@ async def on_ready():
     except Exception as e:
         logger.error(f"voicevoxの初期化に失敗しました: {e}")
 
-    threading.Thread(target=cleanup_temp_files, daemon=True).start()
     client.loop.create_task(cleanup_disconnected_channels())
 
 @client.event

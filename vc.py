@@ -1,11 +1,9 @@
-import aiofiles
 import asyncio
 import discord
-import glob
+import io
 import kanalizer
 import os
 import re
-import tempfile
 import time
 from aivisspeech import aivisspeech
 from aquestalk import aquestalk1, aquestalk2
@@ -55,16 +53,10 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
                 raise ValueError(f"無効なエンジン: {engine}")
 
         audio_data = await audio.get_audio()
-        async with aiofiles.tempfile.NamedTemporaryFile(suffix='.wav', prefix='yomiage_', delete=False) as temp:
-            await temp.write(audio_data)
-            audio_file = temp.name
-
-        if engine.startswith('aquestalk'):
-            audio_file = await pitch_convert(audio_file, pitch)
 
         if debug:
             end_time = time.time()
-            logger.debug(f"音声合成完了 - 所要時間: {end_time - start_time}秒 ファイル名: {audio_file}")
+            logger.debug(f"音声合成完了 - 所要時間: {end_time - start_time}秒")
 
         future = asyncio.Future()
         def after_playing(error):
@@ -76,7 +68,15 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
         while voice_client.is_playing():
             await asyncio.sleep(0.1)
 
-        voice_client.play(discord.FFmpegPCMAudio(audio_file, before_options='-guess_layout_max 0'), after=after_playing)
+        process = await asyncio.create_subprocess_exec(
+            'ffmpeg', '-i', 'pipe:0', '-f', 's16le',
+            '-ar', '48000', '-ac', '2', 'pipe:1',
+            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+        )
+
+        stdout, _ = await process.communicate(input=audio_data)
+        voice_client.play(discord.PCMAudio(io.BytesIO(stdout)), after=after_playing)
+
         await future
     except Exception as e:
         logger.error(f"音声合成エラー: {e}\n入力メッセージ: {message}")
@@ -148,8 +148,7 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
             cleaned_channel_name = re.sub(r'[\U0001F300-\U0001F64F\U0001F680-\U0001F6FF\u2600-\u26FF\u2700-\u27BF]', '', channel.name)
             message = message.replace(f'<#{channel_id_str}>', cleaned_channel_name)
 
-    message = re.sub(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:\/[^\s]*)?', 'URL省略', message)
-
+    message = re.sub(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?:\/[^\s]*)?', 'ユーアールエル省略', message)
     message = re.sub(r'<:[a-zA-Z0-9_]+:[0-9]+>', '', message)
 
     if len(message) == 0:
@@ -168,17 +167,6 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
 
 def update_voice_settings(guild_id: int, user_id: int, voice_name: str, pitch: int, speed: int, engine: str):
     current_voice_settings[(guild_id, user_id)] = (voice_name, pitch, speed, engine)
-
-def cleanup_temp_files() -> None:
-    while True:
-        for file in glob.glob(os.path.join(tempfile.gettempdir(), 'yomiage_*.wav')):
-            try:
-                os.unlink(file)
-                if debug:
-                    logger.debug(f"一時ファイルを削除しました: {file}")
-            except Exception as e:
-                logger.error(f"一時ファイルの削除に失敗しました: {e}")
-        time.sleep(300)
 
 async def pitch_convert(file_path: str, pitch: int) -> str:
     temp_file = file_path.replace('.wav', '_temp.wav')
