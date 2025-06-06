@@ -2,7 +2,6 @@ import asyncio
 import discord
 import io
 import kanalizer
-import os
 import re
 import time
 from aivisspeech import aivisspeech
@@ -53,17 +52,12 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
                 raise ValueError(f"無効なエンジン: {engine}")
 
         audio_data = await audio.get_audio()
+        if engine.startswith('aquestalk'):
+            audio_data = await pitch_convert(audio_data, pitch)
 
         if debug:
             end_time = time.time()
             logger.debug(f"音声合成完了 - 所要時間: {end_time - start_time}秒")
-
-        future = asyncio.Future()
-        def after_playing(error):
-            if error:
-                future.set_exception(error)
-            else:
-                future.set_result(None)
 
         while voice_client.is_playing():
             await asyncio.sleep(0.1)
@@ -74,10 +68,8 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
         )
 
-        stdout, _ = await process.communicate(input=audio_data)
-        voice_client.play(discord.PCMAudio(io.BytesIO(stdout)), after=after_playing)
-
-        await future
+        stdout, _ = await process.communicate(audio_data)
+        voice_client.play(discord.PCMAudio(io.BytesIO(stdout)))
     except Exception as e:
         logger.error(f"音声合成エラー: {e}\n入力メッセージ: {message}")
 
@@ -168,23 +160,19 @@ async def read_message(message: str | discord.Message, guild: discord.Guild = No
 def update_voice_settings(guild_id: int, user_id: int, voice_name: str, pitch: int, speed: int, engine: str):
     current_voice_settings[(guild_id, user_id)] = (voice_name, pitch, speed, engine)
 
-async def pitch_convert(file_path: str, pitch: int) -> str:
-    temp_file = file_path.replace('.wav', '_temp.wav')
+async def pitch_convert(audio_data: bytes, pitch: int) -> bytes:
     process = await asyncio.create_subprocess_exec(
-        'ffmpeg', '-i', file_path,
+        'ffmpeg', '-i', 'pipe:0',
         '-af', f'asetrate=8000*{pitch}/100,atempo=100/{pitch}',
-        '-ar', '8000', '-ac', '1', '-f', 'wav', temp_file,
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL
+        '-ar', '8000', '-ac', '1', '-f', 'wav', 'pipe:1',
+        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
     )
-    await process.wait()
-    os.replace(temp_file, file_path)
-    return file_path
+    stdout, _ = await process.communicate(audio_data)
+    return stdout
 
 def kana_convert(message: str) -> str:
     def replace_english(match: re.Match):
         english_word = match.group(0)
         return kanalizer.convert(english_word.lower())
 
-    result = re.sub(r'[a-zA-Z]+', replace_english, message)
-    return result
+    return re.sub(r'[a-zA-Z]+', replace_english, message)

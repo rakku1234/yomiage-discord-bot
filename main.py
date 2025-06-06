@@ -112,11 +112,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 
         voice_client = member.guild.voice_client
         if voice_client and voice_client.is_connected() and voice_client.channel == after.channel:
-            member_count = len([m for m in after.channel.members if not m.bot])
-            if member_count >= 1:
-                await read_message(f"{member.display_name}が参加しました", member.guild, member, after.channel)
-                if debug:
-                    logger.debug(f"{member.guild.name}に{member.display_name}が参加しました")
+            await read_message(f"{member.display_name}が参加しました", member.guild, member, after.channel)
+            if debug:
+                logger.debug(f"{member.guild.name}に{member.display_name}が参加しました")
 
     if before.channel is not None and after.channel is None:
         voice_client = member.guild.voice_client
