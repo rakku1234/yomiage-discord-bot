@@ -2,25 +2,25 @@
 
 discord.pyを利用しています
 
-## 使用している合成音声エンジン
+## 使用している音声合成エンジン
 - [AquesTalk1](https://www.a-quest.com/products/aquestalk_1.html)
 - [AquesTalk2](https://www.a-quest.com/products/aquestalk_2.html)
 - [VoiceVox](https://voicevox.hiroshiba.jp/)
 - [AivisSpeech](https://aivis-project.com/)
 
-## 使用している合成音声エンジン以外のエンジン
+## 使用している音声合成エンジン以外のエンジン
 
 - [AqKanji2Koe](https://www.a-quest.com/products/aqkanji2koe.html)
 - [kanalizer](https://github.com/VOICEVOX/kanalizer)
 
-合成音声エンジン、合成音声エンジン以外のエンジン、ボイスキャラクターの利用規約に従って使用してください
+音声合成エンジン、音声合成エンジン以外のエンジン、ボイスキャラクターの利用規約に従って使用してください
 
 デフォルトではvoicevoxを使用します
 
 ## 必要なソフトウェア
 - [uv](https://github.com/astral-sh/uv)
 - [FFmpeg](https://ffmpeg.org/)
-- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/ja/visual-cpp-build-tools/)(windowsのみ)
+- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/ja/visual-cpp-build-tools/)(mysql又はmariadbをwindowsで使用するときのみ)
 
 ## インストール方法
 
