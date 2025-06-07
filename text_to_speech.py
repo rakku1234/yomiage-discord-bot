@@ -32,6 +32,16 @@ class text_to_speech:
         self.aq_kanji2koe.AqKanji2Koe_Create.restype = ctypes.c_void_p
         self.aq_kanji2koe.AqKanji2Koe_SetDevKey.argtypes = [ctypes.c_char_p]
         self.aq_kanji2koe.AqKanji2Koe_SetDevKey.restype = ctypes.c_int
+        self.aq_kanji2koe.AqKanji2Koe_Release.argtypes = [ctypes.c_void_p]
+        self.aq_kanji2koe.AqKanji2Koe_Release.restype = None
+
+        match self.system:
+            case 'windos':
+                self.aq_kanji2koe.AqKanji2Koe_Convert_utf8.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+                self.aq_kanji2koe.AqKanji2Koe_Convert_utf8.restype = ctypes.c_int
+            case 'linux':
+                self.aq_kanji2koe.AqKanji2Koe_Convert.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+                self.aq_kanji2koe.AqKanji2Koe_Convert.restype = ctypes.c_int
 
         if Config.load_config()['aqkanji2koe']['dev_key'] is not None:
             self.aq_kanji2koe.AqKanji2Koe_SetDevKey(Config.load_config()['aqkanji2koe']['dev_key'].encode('utf-8'))
@@ -45,8 +55,6 @@ class text_to_speech:
 
         try:
             if self.system == 'windows':
-                self.aq_kanji2koe.AqKanji2Koe_Convert_utf8.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
-                self.aq_kanji2koe.AqKanji2Koe_Convert_utf8.restype = ctypes.c_int
                 output_buffer = ctypes.create_string_buffer(4096)
                 result = self.aq_kanji2koe.AqKanji2Koe_Convert_utf8(instance, message.encode('utf-8'), output_buffer, 4096)
                 if result == 0:
@@ -54,8 +62,6 @@ class text_to_speech:
                 else:
                     raise Exception(f"変換に失敗しました。エラーコード: {result}")
             elif self.system == 'linux':
-                self.aq_kanji2koe.AqKanji2Koe_Convert.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
-                self.aq_kanji2koe.AqKanji2Koe_Convert.restype = ctypes.c_int
                 output_buffer = ctypes.create_string_buffer(4096)
                 result = self.aq_kanji2koe.AqKanji2Koe_Convert(instance, message.encode('utf-8'), output_buffer, 4096)
                 if result == 0:
@@ -63,9 +69,4 @@ class text_to_speech:
                 else:
                     raise Exception(f"変換に失敗しました。エラーコード: {result}")
         finally:
-            if instance:
-                try:
-                    instance_ptr = ctypes.c_void_p(instance)
-                    self.aq_kanji2koe.AqKanji2Koe_Release(instance_ptr)
-                except Exception as e:
-                    raise Exception(f"開放時にエラーが発生しました: {e}")
+            self.aq_kanji2koe.AqKanji2Koe_Release(ctypes.c_void_p(instance))

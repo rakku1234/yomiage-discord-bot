@@ -110,30 +110,25 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     await connect_to_voice_channel(member.guild, after.channel, text_channel_id, debug)
             break
 
-        voice_client = member.guild.voice_client
-        if voice_client and voice_client.is_connected() and voice_client.channel == after.channel:
-            await read_message(f"{member.display_name}が参加しました", member.guild, member, after.channel)
-            if debug:
-                logger.debug(f"{member.guild.name}に{member.display_name}が参加しました")
-
-    if before.channel is not None and after.channel is None:
-        voice_client = member.guild.voice_client
-        if voice_client and voice_client.is_connected() and voice_client.channel == before.channel:
-            member_count = len([m for m in before.channel.members if not m.bot])
-            if member_count > 1:
-                await read_message(f"{member.display_name}が退出しました", member.guild, member, before.channel)
-                if debug:
-                    logger.debug(f"{member.guild.name}に{member.display_name}が退出しました")
-
     voice_client = member.guild.voice_client
     if voice_client is None:
         return
 
     channel = voice_client.channel
-    if channel is None:
-        return
-
     member_count = len([m for m in channel.members if not m.bot])
+
+    if voice_client.is_connected() and voice_client.channel == after.channel and before.channel is None:
+        if member_count > 1:
+            await read_message(f"{member.display_name}が参加しました", member.guild, member, after.channel)
+            if debug:
+                logger.debug(f"{member.guild.name}に{member.display_name}が参加しました")
+
+    if voice_client.is_connected() and voice_client.channel == before.channel and after.channel is None:
+        if member_count > 1:
+            await read_message(f"{member.display_name}が退出しました", member.guild, member, before.channel)
+            if debug:
+                logger.debug(f"{member.guild.name}に{member.display_name}が退出しました")
+
     if member_count > 0:
         return
 
