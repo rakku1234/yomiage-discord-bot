@@ -87,28 +87,26 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                 await connect_to_voice_channel(member.guild, after.channel, autojoin[1], debug)
 
         dynamic_joins = await db.get_dynamic_joins(member.guild.id)
-        if not dynamic_joins:
-            return
+        if dynamic_joins:
+            for text_channel_id in dynamic_joins:
+                text_channel = member.guild.get_channel(text_channel_id)
+                if text_channel.category_id != after.channel.category_id:
+                    continue
 
-        for text_channel_id in dynamic_joins:
-            text_channel = member.guild.get_channel(text_channel_id)
-            if text_channel.category_id != after.channel.category_id:
-                continue
+                non_bot_members = [m for m in after.channel.members if not m.bot]
+                if not non_bot_members or member.guild.voice_client is not None:
+                    break
 
-            non_bot_members = [m for m in after.channel.members if not m.bot]
-            if not non_bot_members or member.guild.voice_client is not None:
+                await asyncio.sleep(1)
+                channel = member.guild.get_channel(after.channel.id)
+                if not channel:
+                    break
+
+                non_bot_members = [m for m in channel.members if not m.bot]
+                if non_bot_members and member.guild.voice_client is None:
+                    if datetime.now(timezone.utc) - after.channel.created_at <= timedelta(minutes=5):
+                        await connect_to_voice_channel(member.guild, after.channel, text_channel_id, debug)
                 break
-
-            await asyncio.sleep(1)
-            channel = member.guild.get_channel(after.channel.id)
-            if not channel:
-                break
-
-            non_bot_members = [m for m in channel.members if not m.bot]
-            if non_bot_members and member.guild.voice_client is None:
-                if datetime.now(timezone.utc) - after.channel.created_at <= timedelta(minutes=5):
-                    await connect_to_voice_channel(member.guild, after.channel, text_channel_id, debug)
-            break
 
     voice_client = member.guild.voice_client
     if voice_client is None:
@@ -117,14 +115,12 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     channel = voice_client.channel
     member_count = len([m for m in channel.members if not m.bot])
 
-    if voice_client.is_connected() and voice_client.channel == after.channel and before.channel is None:
-        if member_count > 1:
+    if voice_client.is_connected():
+        if before.channel is None and voice_client.channel == after.channel and member_count > 1:
             await read_message(f"{member.display_name}が参加しました", member.guild, member, after.channel)
             if debug:
                 logger.debug(f"{member.guild.name}に{member.display_name}が参加しました")
-
-    if voice_client.is_connected() and voice_client.channel == before.channel and after.channel is None:
-        if member_count > 1:
+        elif voice_client.channel == before.channel and after.channel is None and member_count >= 1:
             await read_message(f"{member.display_name}が退出しました", member.guild, member, before.channel)
             if debug:
                 logger.debug(f"{member.guild.name}に{member.display_name}が退出しました")
