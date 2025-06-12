@@ -4,11 +4,13 @@ import io
 import kanalizer
 import re
 import time
+import warnings
 from aivisspeech import aivisspeech
 from aquestalk import aquestalk1, aquestalk2
 from collections import defaultdict
 from config import Config
 from database import Database
+from functools import lru_cache
 from loguru import logger
 from text_to_speech import text_to_speech
 from voicevox import voicevox
@@ -24,7 +26,10 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
     if not voice_client.is_connected():
         return
 
-    message = kana_convert(message)
+    words = re.findall(r'[a-z]+', message.lower())
+    for word in words:
+        converted = kana_convert(word)
+        message = message.replace(word, converted)
 
     if debug:
         logger.debug(f"音声合成開始: {message} - 使用する音声合成エンジン: {engine}")
@@ -170,9 +175,10 @@ async def pitch_convert(audio_data: bytes, pitch: int) -> bytes:
     stdout, _ = await process.communicate(audio_data)
     return stdout
 
-def kana_convert(message: str) -> str:
-    def replace_english(match: re.Match):
-        english_word = match.group(0)
-        return kanalizer.convert(english_word.lower())
-
-    return re.sub(r'[a-zA-Z]+', replace_english, message)
+@lru_cache(maxsize=512)
+def kana_convert(word: str) -> str:
+    with warnings.catch_warnings(action='error', category=kanalizer.IncompleteConversionWarning):
+        try:
+            return kanalizer.convert(word)
+        except kanalizer.IncompleteConversionWarning:
+            return word
