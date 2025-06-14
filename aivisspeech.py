@@ -10,7 +10,4 @@ class aivisspeech(voicevox):
         }
 
     async def get_audio(self) -> bytes:
-        try:
-            return await self._get_engine()
-        except Exception as e:
-            raise RuntimeError(e)
+        return await self._get_engine()
