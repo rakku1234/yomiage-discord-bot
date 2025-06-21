@@ -1,5 +1,6 @@
 import aiosqlite
 import asyncmy
+import redis.asyncio as aioredis
 from config import Config
 
 class Database:
@@ -15,7 +16,9 @@ class Database:
 
     async def connect(self) -> None:
         db_config = self.config['database']
+        redis_config = self.config['redis']
         connection_type = db_config.get('connection', 'sqlite').lower()
+        self.aioredis = aioredis.Redis(host=redis_config['host'], port=redis_config['port'], db=redis_config['db'])
 
         if connection_type == 'sqlite':
             self.connection = await aiosqlite.connect(db_config.get('database', 'bot.db'))
@@ -33,14 +36,6 @@ class Database:
 
     async def create_tables_sqlite(self) -> None:
         async with self.connection.cursor() as cursor:
-            await cursor.execute("""
-                CREATE TABLE IF NOT EXISTS read_channels (
-                    server_id INTEGER PRIMARY KEY,
-                    voice_channel INTEGER NOT NULL,
-                    chat_channel INTEGER NOT NULL
-                )
-            """)
-
             await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS autojoin (
                     server_id INTEGER PRIMARY KEY,
@@ -90,23 +85,6 @@ class Database:
     async def create_tables_mysql(self) -> None:
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                await cursor.execute("""
-                    SELECT COUNT(*)
-                    FROM information_schema.tables
-                    WHERE table_schema = %s
-                    AND table_name = 'read_channels'
-                """, (self.config['database']['database'],))
-                table_exists = await cursor.fetchone()
-
-                if not table_exists[0]:
-                    await cursor.execute("""
-                        CREATE TABLE read_channels (
-                            server_id BIGINT PRIMARY KEY,
-                            voice_channel BIGINT NOT NULL,
-                            chat_channel BIGINT NOT NULL
-                        )
-                    """)
-
                 await cursor.execute("""
                     SELECT COUNT(*)
                     FROM information_schema.tables
@@ -199,75 +177,34 @@ class Database:
                 await conn.commit()
 
     async def get_read_channels(self) -> dict[int, tuple[int, int]]:
-        if self.config['database']['connection'] == 'sqlite':
-            async with self.connection.cursor() as cursor:
-                await cursor.execute("SELECT server_id, voice_channel, chat_channel FROM read_channels")
-                rows = await cursor.fetchall()
-                return {row[0]: (row[1], row[2]) for row in rows}
-        elif self.config['database']['connection'] in ['mysql', 'mariadb']:
-            async with self.pool.acquire() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute("SELECT server_id, voice_channel, chat_channel FROM read_channels")
-                    rows = await cursor.fetchall()
-                    return {row[0]: (row[1], row[2]) for row in rows}
+        keys = await self.aioredis.keys("read_channels:*")
+        result = {}
+        for key in keys:
+            server_id = int(key.decode().split(":")[1])
+            data = await self.aioredis.hgetall(key)
+            if data:
+                voice_channel = int(data[b'voice_channel'].decode())
+                chat_channel = int(data[b'chat_channel'].decode())
+                result[server_id] = (voice_channel, chat_channel)
+        return result
 
     async def get_read_channel(self, server_id: int) -> tuple[int, int] | None:
-        if self.config['database']['connection'] == 'sqlite':
-            async with self.connection.cursor() as cursor:
-                await cursor.execute("""
-                    SELECT voice_channel, chat_channel 
-                    FROM read_channels 
-                    WHERE server_id = ?
-                """, (server_id,))
-                result = await cursor.fetchone()
-                if result:
-                    return result
-                else:
-                    return None
-        elif self.config['database']['connection'] in ['mysql', 'mariadb']:
-            async with self.pool.acquire() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute("""
-                        SELECT voice_channel, chat_channel 
-                        FROM read_channels 
-                        WHERE server_id = %s
-                    """, (server_id,))
-                    result = await cursor.fetchone()
-                    if result:
-                        return result
-                    else:
-                        return None
+        data = await self.aioredis.hgetall(f"read_channels:{server_id}")
+        if data:
+            voice_channel = int(data[b'voice_channel'].decode())
+            chat_channel = int(data[b'chat_channel'].decode())
+            return (voice_channel, chat_channel)
+        else:
+            return None
 
     async def set_read_channel(self, server_id: int, voice_channel: int, chat_channel: int) -> None:
-        if self.config['database']['connection'] == 'sqlite':
-            async with self.connection.cursor() as cursor:
-                await cursor.execute("""
-                    INSERT OR REPLACE INTO read_channels (server_id, voice_channel, chat_channel)
-                    VALUES (?, ?, ?)
-                """, (server_id, voice_channel, chat_channel))
-                await self.connection.commit()
-        elif self.config['database']['connection'] in ['mysql', 'mariadb']:
-            async with self.pool.acquire() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute("""
-                        INSERT INTO read_channels (server_id, voice_channel, chat_channel)
-                        VALUES (%s, %s, %s)
-                        ON DUPLICATE KEY UPDATE 
-                        voice_channel = %s,
-                        chat_channel = %s
-                    """, (server_id, voice_channel, chat_channel, voice_channel, chat_channel))
-                    await conn.commit()
+        await self.aioredis.hset(f"read_channels:{server_id}", mapping={
+            'voice_channel': voice_channel,
+            'chat_channel': chat_channel
+        })
 
     async def remove_read_channel(self, server_id: int) -> None:
-        if self.config['database']['connection'] == 'sqlite':
-            async with self.connection.cursor() as cursor:
-                await cursor.execute("DELETE FROM read_channels WHERE server_id = ?", (server_id,))
-                await self.connection.commit()
-        elif self.config['database']['connection'] in ['mysql', 'mariadb']:
-            async with self.pool.acquire() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute("DELETE FROM read_channels WHERE server_id = %s", (server_id,))
-                    await conn.commit()
+        await self.aioredis.delete(f"read_channels:{server_id}")
 
     async def set_autojoin(self, server_id: int, voice_channel: int, text_channel: int) -> None:
         if self.config['database']['connection'] == 'sqlite':
@@ -566,6 +503,11 @@ class Database:
                     await conn.commit()
 
     def __del__(self):
+        try:
+            self.aioredis.close()
+        except ImportError:
+            # エラーを表示させないためにパスする
+            pass
         if self.config['database']['connection'] == 'sqlite':
             if self.connection:
                 self.connection.close()

@@ -20,6 +20,7 @@ discord.pyを利用しています
 ## 必要なソフトウェア
 - [uv](https://github.com/astral-sh/uv)
 - [FFmpeg](https://ffmpeg.org/)
+- [Redis](https://redis.io/)
 - [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/ja/visual-cpp-build-tools/)(mysql又はmariadbをwindowsで使用するときのみ)
 
 ## インストール方法
