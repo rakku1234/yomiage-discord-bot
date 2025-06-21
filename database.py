@@ -18,7 +18,7 @@ class Database:
         db_config = self.config['database']
         redis_config = self.config['redis']
         connection_type = db_config.get('connection', 'sqlite').lower()
-        self.aioredis = aioredis.Redis(host=redis_config['host'], port=redis_config['port'], db=redis_config['db'])
+        self.aioredis = aioredis.Redis(host=redis_config['host'], port=redis_config['port'], db=redis_config['db'], password=redis_config['passwd'])
 
         if connection_type == 'sqlite':
             self.connection = await aiosqlite.connect(db_config.get('database', 'bot.db'))

@@ -13,6 +13,7 @@ redis:
     host: localhost
     port: 6379
     db: 0
+    passwd: null
 engine_enabled:
     aquestalk1: false
     aquestalk2: false
