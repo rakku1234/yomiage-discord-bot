@@ -28,6 +28,8 @@ async def speak_in_voice_channel(voice_client: discord.VoiceClient, message: str
 
     words = re.findall(r'[a-z]+', message.lower())
     for word in words:
+        if engine == 'voicevox':
+            break
         converted = kana_convert(word)
         message = message.replace(word, converted)
 

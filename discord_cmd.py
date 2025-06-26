@@ -206,7 +206,7 @@ def setup_commands(tree: app_commands.CommandTree):
         ]
         return choices[:25]
 
-    @tree.command(name='skip', description='現在の読み上げを停止します')
+    @tree.command(name='skip', description='現在の読み上げをすべてスキップします')
     async def skip(interaction: discord.Interaction):
         if interaction.guild.voice_client is None:
             await interaction.response.send_message(embed=discord.Embed(color=discord.Color.red(), description='ボイスチャンネルに接続していません。'), ephemeral=True)
