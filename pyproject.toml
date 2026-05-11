@@ -26,7 +26,7 @@ voicevox_core = [
 [dependency-groups]
 dev = [
     "ruff>=0.15.12",
-    "ty>=0.0.34",
+    "ty>=0.0.35",
 ]
 
 [tool.ruff]
